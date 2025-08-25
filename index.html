@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Test</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body {
+            background: white;
+            font-family: Arial, sans-serif;
+            padding: 50px;
+            text-align: center;
+        }
+        .test-button {
+            background: #6772e5;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .test-button:hover {
+            background: #5469d4;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stripe Integration Test</h1>
+    <p>Simple test to verify Stripe payments work</p>
+    
+    <button class="test-button" onclick="testPayment()">Test $10 Payment</button>
+    <button class="test-button" onclick="testSubscription()">Test $5/week Subscription</button>
+    
+    <div id="result"></div>
+
+    <script>
+        // Initialize Stripe (using your publishable key)
+        const stripe = Stripe('pk_test_51RyJYLP5nKv78UY6iT3wmvP7eswDmK0ELC6o1aJWiHHh8aq0tZ7N7Da1vR65kw2oRv7ixnBm4PLLSxEADjmmUAVd009yoEMITN');
+        
+        // Backend URL (will be Railway URL)
+        const backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000'
+            : 'https://stripe-test-production.up.railway.app'; // We'll update this URL later
+        
+        async function testPayment() {
+            document.getElementById('result').innerHTML = 'Processing payment...';
+            
+            try {
+                const response = await fetch(`${backendUrl}/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mode: 'payment',
+                        line_items: [{
+                            price_data: {
+                                currency: 'cad',
+                                product_data: {
+                                    name: 'Test Payment',
+                                },
+                                unit_amount: 1000, // $10.00 in cents
+                            },
+                            quantity: 1,
+                        }],
+                        success_url: window.location.href + '?success=true',
+                        cancel_url: window.location.href + '?canceled=true',
+                        metadata: {
+                            test_type: 'one_time_payment'
+                        }
+                    }),
+                });
+
+                const session = await response.json();
+
+                if (session.error) {
+                    throw new Error(session.error);
+                }
+
+                // Redirect to Stripe Checkout
+                const result = await stripe.redirectToCheckout({
+                    sessionId: session.id
+                });
+
+                if (result.error) {
+                    throw new Error(result.error.message);
+                }
+
+            } catch (error) {
+                console.error('Payment error:', error);
+                document.getElementById('result').innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        }
+
+        async function testSubscription() {
+            document.getElementById('result').innerHTML = 'Processing subscription...';
+            
+            try {
+                const response = await fetch(`${backendUrl}/create-checkout-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mode: 'subscription',
+                        line_items: [{
+                            price_data: {
+                                currency: 'cad',
+                                product_data: {
+                                    name: 'Test Weekly Subscription',
+                                },
+                                unit_amount: 500, // $5.00 in cents
+                                recurring: {
+                                    interval: 'week'
+                                }
+                            },
+                            quantity: 1,
+                        }],
+                        success_url: window.location.href + '?success=true',
+                        cancel_url: window.location.href + '?canceled=true',
+                        metadata: {
+                            test_type: 'subscription'
+                        }
+                    }),
+                });
+
+                const session = await response.json();
+
+                if (session.error) {
+                    throw new Error(session.error);
+                }
+
+                // Redirect to Stripe Checkout
+                const result = await stripe.redirectToCheckout({
+                    sessionId: session.id
+                });
+
+                if (result.error) {
+                    throw new Error(result.error.message);
+                }
+
+            } catch (error) {
+                console.error('Subscription error:', error);
+                document.getElementById('result').innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        }
+
+        // Check for success/cancel URL parameters
+        window.addEventListener('load', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success') === 'true') {
+                document.getElementById('result').innerHTML = '<strong style="color: green;">✅ Payment successful!</strong>';
+            } else if (urlParams.get('canceled') === 'true') {
+                document.getElementById('result').innerHTML = '<strong style="color: orange;">⚠️ Payment canceled</strong>';
+            }
+        });
+    </script>
+</body>
+</html>
