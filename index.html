@@ -49,7 +49,7 @@
         // Backend URL (will be Railway URL)
         const backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:3000'
-            : 'https://stripe-test-production.up.railway.app'; // We'll update this URL later
+            : 'https://stripe-test-project-production.up.railway.app';
         
         async function testPayment() {
             document.getElementById('result').innerHTML = 'Processing payment...';
